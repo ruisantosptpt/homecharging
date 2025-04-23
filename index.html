@@ -11,213 +11,168 @@
       font-family: Arial, sans-serif;
       padding: 20px;
     }
-    .container {
-      max-width: 800px;
-      margin: auto;
-    }
-    .input-group {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-    input, button {
-      padding: 10px;
-    }
-    .card {
-      background-color: #111;
-      padding: 15px;
-      border-radius: 8px;
-      margin-top: 20px;
-    }
-    canvas {
-      background-color: #222;
-      border-radius: 8px;
-      margin-top: 20px;
-    }
-    .side-by-side {
-      display: flex;
-      justify-content: space-around;
-      flex-wrap: wrap;
-    }
-    #configBtn {
-      position: fixed;
-      bottom: 20px;
-      left: 20px;
-      background-color: #333;
-      color: white;
-      padding: 10px 15px;
-      border-radius: 6px;
-      cursor: pointer;
-      z-index: 11;
-    }
-    #configMenu {
-      position: fixed;
-      bottom: 70px;
-      left: 20px;
-      background-color: #111;
-      padding: 15px;
-      border-radius: 8px;
-      display: none;
-      z-index: 10;
-    }
-    #configMenu input {
-      display: block;
-      margin-bottom: 10px;
+    input, button, select {
+      padding: 8px;
+      margin: 5px 0;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 10px;
+      margin-top: 20px;
     }
     th, td {
+      border: 1px solid #444;
       padding: 8px;
-      text-align: left;
-      border-bottom: 1px solid #333;
     }
-    th {
-      font-weight: bold;
+    .config {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
     }
-    .month-title {
-      font-size: 1.2em;
+    .config-panel {
+      display: none;
+      background-color: #111;
+      padding: 15px;
+      border-radius: 8px;
+      position: fixed;
+      bottom: 70px;
+      left: 20px;
+      z-index: 10;
+    }
+    .mes-titulo {
+      font-size: 1.3em;
       margin-top: 20px;
-      font-weight: bold;
-      text-transform: capitalize;
     }
-    .total-line {
-      margin-top: 10px;
+    .totais {
       font-weight: bold;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Home Charger Tracker</h1>
-    <div class="card">
-      <h2>Inserir Consumo</h2>
-      <div class="input-group">
-        <input type="number" id="consumoValor" placeholder="Valor">
-        <input type="date" id="consumoData">
-        <button onclick="adicionarConsumo('kWh')">kWh</button>
-        <button onclick="adicionarConsumo('%')">%</button>
-      </div>
-    </div>
-    <div class="card">
-      <h2>Histórico de Consumos</h2>
-      <div id="historico"></div>
-    </div>
+  <h1>Home Charger Tracker</h1>
+
+  <div>
+    <label>Valor:</label>
+    <input type="number" id="valorInput">
+
+    <label>Data:</label>
+    <input type="date" id="dataInput">
+
+    <button onclick="inserirConsumo('kwh')">kWh</button>
+    <button onclick="inserirConsumo('percentagem')" id="btnPercentagem">%</button>
   </div>
 
-  <div id="configBtn" onclick="toggleConfigMenu()">⚙️</div>
-  <div id="configMenu">
-    <label>Preço combustível (€ por litro)</label>
-    <input type="number" id="precoCombustivel" step="0.01">
+  <div class="mes-titulo" id="mesTitulo"></div>
+  <table id="tabela">
+    <thead>
+      <tr><th>Data</th><th>kWh</th><th>Custo</th><th></th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
-    <label>Preço kWh (€)</label>
-    <input type="number" id="precoKWh" step="0.01">
+  <div class="totais" id="totaisMes"></div>
 
-    <label>Meta mensal (€)</label>
-    <input type="number" id="metaMensal" step="0.01">
+  <div class="config">
+    <button onclick="toggleConfig()">⚙️</button>
+    <div class="config-panel" id="configPanel">
+      <label>Preço kWh (€):</label>
+      <input type="number" id="precoKw"><br>
 
-    <label>kWh para 20%</label>
-    <input type="number" id="equivalenciaPercentagem" step="0.01">
+      <label>Preço Gasóleo (€):</label>
+      <input type="number" id="precoGasoleo"><br>
 
-    <button onclick="guardarConfiguracoes()">Guardar</button>
+      <label>Meta Mensal (€):</label>
+      <input type="number" id="metaMensal"><br>
+
+      <label>Quantos kWh dá 20%:</label>
+      <input type="number" id="kwhPor20"><br>
+
+      <button onclick="guardarConfig()">Guardar</button>
+    </div>
   </div>
 
   <script>
     let consumos = JSON.parse(localStorage.getItem('consumos')) || [];
     let config = JSON.parse(localStorage.getItem('config')) || {};
 
-    function toggleConfigMenu() {
-      const menu = document.getElementById('configMenu');
-      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    function toggleConfig() {
+      document.getElementById('configPanel').style.display =
+        document.getElementById('configPanel').style.display === 'block' ? 'none' : 'block';
     }
 
-    function guardarConfiguracoes() {
-      config.precoCombustivel = parseFloat(document.getElementById('precoCombustivel').value);
-      config.precoKWh = parseFloat(document.getElementById('precoKWh').value);
+    function guardarConfig() {
+      config.precoKw = parseFloat(document.getElementById('precoKw').value);
+      config.precoGasoleo = parseFloat(document.getElementById('precoGasoleo').value);
       config.metaMensal = parseFloat(document.getElementById('metaMensal').value);
-      config.equivalenciaPercentagem = parseFloat(document.getElementById('equivalenciaPercentagem').value);
+      config.kwhPor20 = parseFloat(document.getElementById('kwhPor20').value);
       localStorage.setItem('config', JSON.stringify(config));
-      alert('Configurações guardadas com sucesso!');
+      alert('Configuração guardada.');
+      atualizarVisibilidadePercentagem();
     }
 
-    function adicionarConsumo(tipo) {
-      const valor = parseFloat(document.getElementById('consumoValor').value);
-      const data = document.getElementById('consumoData').value;
-      if (!valor || !data || (tipo === '%' && !config.equivalenciaPercentagem)) {
-        alert('Por favor preencha todos os campos necessários.');
-        return;
-      }
-      let kwh = tipo === 'kWh' ? valor : (valor * config.equivalenciaPercentagem) / 20;
+    function atualizarVisibilidadePercentagem() {
+      document.getElementById('btnPercentagem').style.display = config.kwhPor20 ? 'inline' : 'none';
+    }
+
+    function inserirConsumo(tipo) {
+      const valor = parseFloat(document.getElementById('valorInput').value);
+      const data = document.getElementById('dataInput').value;
+      if (!valor || !data) return alert('Preenche os campos todos.');
+      let kwh = tipo === 'kwh' ? valor : (config.kwhPor20 ? (valor * config.kwhPor20 / 20) : 0);
+      if (tipo === 'percentagem' && !config.kwhPor20) return alert('Falta a equivalência %.');
       consumos.push({ data, kwh });
       localStorage.setItem('consumos', JSON.stringify(consumos));
-      renderHistorico();
+      renderTabela();
     }
 
-    function apagarConsumo(index) {
-      if (!confirm('Tem a certeza que quer apagar este consumo?')) return;
-      consumos.splice(index, 1);
-      localStorage.setItem('consumos', JSON.stringify(consumos));
-      renderHistorico();
-    }
-
-    function renderHistorico() {
-      const historico = document.getElementById('historico');
-      historico.innerHTML = '';
-      const porMes = {};
-
-      consumos.forEach((c, i) => {
-        const data = new Date(c.data);
-        const mesAno = data.toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' });
-        if (!porMes[mesAno]) porMes[mesAno] = [];
-        porMes[mesAno].push({ ...c, index: i });
-      });
-
-      for (const mes in porMes) {
-        historico.innerHTML += `<div class="month-title">${mes.charAt(0).toUpperCase() + mes.slice(1)}</div>`;
-        historico.innerHTML += `
-          <table>
-            <tr><th>Data</th><th>kWh</th><th>Custo (€)</th><th></th></tr>
-            ${porMes[mes].map(c => {
-              const data = new Date(c.data);
-              const diaSemana = data.toLocaleDateString('pt-PT', { weekday: 'long' });
-              const diaMes = data.getDate();
-              const custo = config.precoKWh ? (c.kwh * config.precoKWh).toFixed(2) : '-';
-              return `
-                <tr>
-                  <td>${diaSemana}, dia ${diaMes}</td>
-                  <td>${c.kwh.toFixed(2)}</td>
-                  <td>${custo}</td>
-                  <td><button onclick="editarConsumo(${c.index})">Editar</button> <button onclick="apagarConsumo(${c.index})">Apagar</button></td>
-                </tr>`;
-            }).join('')}
-          </table>
-        `;
-        const totalKWh = porMes[mes].reduce((acc, c) => acc + c.kwh, 0).toFixed(2);
-        const totalCusto = config.precoKWh ? (porMes[mes].reduce((acc, c) => acc + (c.kwh * config.precoKWh), 0)).toFixed(2) : '-';
-        historico.innerHTML += `<div class="total-line">Total: ${totalKWh} kWh | ${totalCusto} €</div>`;
+    function apagar(index) {
+      if (confirm('Queres mesmo apagar?')) {
+        consumos.splice(index, 1);
+        localStorage.setItem('consumos', JSON.stringify(consumos));
+        renderTabela();
       }
     }
 
-    function editarConsumo(index) {
-      const novoValor = prompt('Novo valor em kWh:');
-      if (!novoValor || isNaN(novoValor)) return;
-      consumos[index].kwh = parseFloat(novoValor);
-      localStorage.setItem('consumos', JSON.stringify(consumos));
-      renderHistorico();
+    function renderTabela() {
+      const tbody = document.querySelector('#tabela tbody');
+      tbody.innerHTML = '';
+      const hoje = new Date();
+      const mes = hoje.getMonth();
+      const ano = hoje.getFullYear();
+      const consumosDoMes = consumos.filter(c => {
+        const d = new Date(c.data);
+        return d.getMonth() === mes && d.getFullYear() === ano;
+      }).sort((a, b) => new Date(b.data) - new Date(a.data));
+
+      let total = 0;
+      consumosDoMes.forEach((c, i) => {
+        const d = new Date(c.data);
+        const diaSemana = d.toLocaleDateString('pt-PT', { weekday: 'long' });
+        const linha = document.createElement('tr');
+        const custo = (c.kwh * (config.precoKw || 0)).toFixed(2);
+        linha.innerHTML = `<td>${diaSemana} dia ${d.getDate()}</td><td>${c.kwh.toFixed(2)}</td><td>${custo}</td><td><button onclick="apagar(${i})">🗑️</button></td>`;
+        tbody.appendChild(linha);
+        total += c.kwh;
+      });
+
+      const nomeMes = hoje.toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' });
+      document.getElementById('mesTitulo').textContent = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
+
+      const custoTotal = (total * (config.precoKw || 0)).toFixed(2);
+      document.getElementById('totaisMes').textContent = `Total do mês: ${total.toFixed(2)} kWh | ${custoTotal} €`;
     }
 
-    function carregarConfiguracoes() {
-      document.getElementById('precoCombustivel').value = config.precoCombustivel || '';
-      document.getElementById('precoKWh').value = config.precoKWh || '';
+    function carregarConfig() {
+      document.getElementById('precoKw').value = config.precoKw || '';
+      document.getElementById('precoGasoleo').value = config.precoGasoleo || '';
       document.getElementById('metaMensal').value = config.metaMensal || '';
-      document.getElementById('equivalenciaPercentagem').value = config.equivalenciaPercentagem || '';
+      document.getElementById('kwhPor20').value = config.kwhPor20 || '';
+      atualizarVisibilidadePercentagem();
     }
 
-    carregarConfiguracoes();
-    renderHistorico();
+    carregarConfig();
+    renderTabela();
   </script>
 </body>
 </html>
