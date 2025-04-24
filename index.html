@@ -12,7 +12,6 @@
       background-color: #0d0d0d;
       color: white;
     }
-
     header {
       display: flex;
       justify-content: space-between;
@@ -20,12 +19,10 @@
       background-color: #1a1a1a;
       padding: 10px 20px;
     }
-
     .container {
       display: flex;
       padding: 20px;
     }
-
     .left-panel, .right-panel {
       flex: 1;
       margin: 0 10px;
@@ -33,22 +30,18 @@
       padding: 20px;
       border-radius: 10px;
     }
-
     h2 {
       margin-top: 0;
     }
-
     table {
       width: 100%;
       border-collapse: collapse;
     }
-
     th, td {
       padding: 8px;
       border-bottom: 1px solid #333;
       text-align: left;
     }
-
     .settings {
       display: none;
       background-color: #1a1a1a;
@@ -56,29 +49,24 @@
       margin: 10px;
       border-radius: 10px;
     }
-
     .settings.visible {
       display: block;
     }
-
     .insert-consumption {
       background-color: #1a1a1a;
       padding: 10px 20px;
       margin: 10px;
       border-radius: 10px;
     }
-
     .month-nav {
       display: flex;
       justify-content: center;
       margin: 20px 0;
     }
-
     .month-nav button {
       margin: 0 10px;
       padding: 5px 10px;
     }
-
     input {
       margin: 0 10px 10px 0;
     }
@@ -105,7 +93,8 @@
   <div class="settings" id="settingsPanel">
     <label>Preço kWh (€): <input type="number" id="priceKWh" step="0.01" /></label><br>
     <label>Preço Gasóleo (€): <input type="number" id="priceDiesel" step="0.01" /></label><br>
-    <label>Meta Mensal (€): <input type="number" id="monthlyGoal" step="0.01" /></label>
+    <label>Meta Mensal (€): <input type="number" id="monthlyGoal" step="0.01" /></label><br>
+    <button onclick="saveSettings()">Guardar</button>
   </div>
 
   <div class="container">
@@ -123,77 +112,43 @@
     </div>
     <div class="right-panel">
       <h2>Gráfico Anual</h2>
-      <canvas id="annualChart"></canvas>
+      <canvas id="chart"></canvas>
     </div>
   </div>
 
   <script>
-    const data = JSON.parse(localStorage.getItem('chargingData') || '{}');
-    let currentMonth = new Date().getMonth();
-    let currentYear = new Date().getFullYear();
-    const priceKWhInput = document.getElementById('priceKWh');
-    const priceDieselInput = document.getElementById('priceDiesel');
-    const monthlyGoalInput = document.getElementById('monthlyGoal');
-    const monthLabel = document.getElementById('monthLabel');
-    const settingsPanel = document.getElementById('settingsPanel');
-    const ctx = document.getElementById('annualChart').getContext('2d');
-    let chart;
+    const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+      "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+    const weekDays = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
 
-    function formatarDataCompleta(dataString) {
-      const data = new Date(dataString);
-      const dias = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
-      const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-      
-      const diaSemana = dias[data.getDay()];
-      const dia = data.getDate();
-      const mes = meses[data.getMonth()];
+    let currentDate = new Date();
+    let entries = JSON.parse(localStorage.getItem('entries')) || [];
+    let settings = JSON.parse(localStorage.getItem('settings')) || {
+      priceKWh: 0.20,
+      priceDiesel: 1.70,
+      monthlyGoal: 30
+    };
 
-      return `${diaSemana}, ${dia} ${mes}`;
-    }
-
-    function saveData() {
-      localStorage.setItem('chargingData', JSON.stringify(data));
-    }
+    document.getElementById('priceKWh').value = settings.priceKWh;
+    document.getElementById('priceDiesel').value = settings.priceDiesel;
+    document.getElementById('monthlyGoal').value = settings.monthlyGoal;
 
     function toggleSettings() {
-      settingsPanel.classList.toggle('visible');
+      document.getElementById('settingsPanel').classList.toggle('visible');
     }
 
-    function updateTable() {
-      const tbody = document.querySelector('#dataTable tbody');
-      tbody.innerHTML = '';
-      const monthKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
-      const entries = data[monthKey] || [];
+    function saveSettings() {
+      settings.priceKWh = parseFloat(document.getElementById('priceKWh').value);
+      settings.priceDiesel = parseFloat(document.getElementById('priceDiesel').value);
+      settings.monthlyGoal = parseFloat(document.getElementById('monthlyGoal').value);
+      localStorage.setItem('settings', JSON.stringify(settings));
+      updateTable();
+      updateChart();
+    }
 
-      let totalKWh = 0;
-      let totalCost = 0;
-
-      entries.forEach((entry, index) => {
-        const row = document.createElement('tr');
-        const tdData = document.createElement('td');
-        const tdKWh = document.createElement('td');
-        const tdCost = document.createElement('td');
-        const tdDelete = document.createElement('td');
-        const cost = entry.kWh * (parseFloat(priceKWhInput.value) || 0);
-
-        tdData.textContent = formatarDataCompleta(entry.date);
-        tdKWh.textContent = entry.kWh.toFixed(2);
-        tdCost.textContent = cost.toFixed(2) + ' €';
-        tdDelete.innerHTML = `<button onclick="deleteEntry(${index})">❌</button>`;
-
-        row.appendChild(tdData);
-        row.appendChild(tdKWh);
-        row.appendChild(tdCost);
-        row.appendChild(tdDelete);
-        tbody.appendChild(row);
-
-        totalKWh += entry.kWh;
-        totalCost += cost;
-      });
-
-      document.getElementById('totalKWh').textContent = totalKWh.toFixed(2);
-      document.getElementById('totalCost').textContent = totalCost.toFixed(2) + ' €';
+    function formatDate(dateStr) {
+      const date = new Date(dateStr);
+      return `${weekDays[date.getDay()]}, ${date.getDate()} ${monthNames[date.getMonth()]}`;
     }
 
     function addEntry(type) {
@@ -201,110 +156,109 @@
       const date = document.getElementById('dateInput').value;
       if (!value || !date) return;
 
-      const monthKey = `${new Date(date).getFullYear()}-${String(new Date(date).getMonth() + 1).padStart(2, '0')}`;
-      data[monthKey] = data[monthKey] || [];
-
-      let kWhValue = value;
-      if (type === '%') {
-        kWhValue = value / 100 * 60; // suposição: 60kWh capacidade total
-      }
-
-      data[monthKey].push({ kWh: kWhValue, date });
-      saveData();
-      if (monthKey === `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`) {
-        updateTable();
-        updateChart();
-      }
-    }
-
-    function deleteEntry(index) {
-      const monthKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
-      data[monthKey].splice(index, 1);
-      saveData();
+      const entry = {
+        value,
+        date,
+        type,
+        priceKWh: settings.priceKWh // guardar o valor do momento
+      };
+      entries.push(entry);
+      localStorage.setItem('entries', JSON.stringify(entries));
       updateTable();
       updateChart();
     }
 
+    function removeEntry(index) {
+      entries.splice(index, 1);
+      localStorage.setItem('entries', JSON.stringify(entries));
+      updateTable();
+      updateChart();
+    }
+
+    function prevMonth() {
+      currentDate.setMonth(currentDate.getMonth() - 1);
+      updateTable();
+    }
+
+    function nextMonth() {
+      currentDate.setMonth(currentDate.getMonth() + 1);
+      updateTable();
+    }
+
+    function updateTable() {
+      const tbody = document.querySelector("#dataTable tbody");
+      tbody.innerHTML = "";
+      const month = currentDate.getMonth();
+      const year = currentDate.getFullYear();
+
+      let filtered = entries.filter(e => {
+        const d = new Date(e.date);
+        return d.getMonth() === month && d.getFullYear() === year;
+      });
+
+      filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      let totalKWh = 0;
+      let totalCost = 0;
+
+      filtered.forEach((e, i) => {
+        const row = document.createElement("tr");
+        const cost = e.type === "kWh" ? e.value * (e.priceKWh || 0) : 0;
+        totalKWh += e.type === "kWh" ? e.value : 0;
+        totalCost += cost;
+
+        row.innerHTML = `
+          <td>${formatDate(e.date)}</td>
+          <td>${e.type === "kWh" ? e.value.toFixed(2) : "-"}</td>
+          <td>${cost.toFixed(2)} €</td>
+          <td><button onclick="removeEntry(${entries.indexOf(e)})">🗑️</button></td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      document.getElementById("totalKWh").textContent = totalKWh.toFixed(2);
+      document.getElementById("totalCost").textContent = totalCost.toFixed(2);
+      document.getElementById("monthTitle").textContent = `${monthNames[month]} ${year}`;
+      document.getElementById("monthLabel").textContent = `${monthNames[month]} ${year}`;
+    }
+
     function updateChart() {
-      const labels = [];
-      const kWhData = [];
-      const euroData = [];
+      const monthlyData = Array(12).fill(0);
+      entries.forEach(e => {
+        const d = new Date(e.date);
+        if (e.type === "kWh") {
+          monthlyData[d.getMonth()] += e.value * (e.priceKWh || 0);
+        }
+      });
 
-      for (let i = 0; i < 12; i++) {
-        const key = `${currentYear}-${String(i + 1).padStart(2, '0')}`;
-        const entries = data[key] || [];
-        const totalKWh = entries.reduce((sum, entry) => sum + entry.kWh, 0);
-        const totalCost = totalKWh * (parseFloat(priceKWhInput.value) || 0);
-
-        labels.push(new Date(currentYear, i).toLocaleString('pt-PT', { month: 'short' }));
-        kWhData.push(totalKWh.toFixed(2));
-        euroData.push(totalCost.toFixed(2));
-      }
-
-      if (chart) chart.destroy();
-
-      chart = new Chart(ctx, {
+      if (window.myChart) window.myChart.destroy();
+      const ctx = document.getElementById('chart').getContext('2d');
+      window.myChart = new Chart(ctx, {
         type: 'bar',
         data: {
-          labels,
-          datasets: [
-            {
-              label: 'kWh',
-              data: kWhData,
-              backgroundColor: 'rgba(75, 192, 192, 0.6)'
-            },
-            {
-              label: '€',
-              data: euroData,
-              backgroundColor: 'rgba(255, 206, 86, 0.6)'
-            }
-          ]
+          labels: monthNames,
+          datasets: [{
+            label: 'Custo (€)',
+            data: monthlyData,
+            backgroundColor: '#4caf50'
+          }]
         },
         options: {
           responsive: true,
-          plugins: {
-            legend: { position: 'top' }
-          },
           scales: {
             y: {
-              beginAtZero: true
+              beginAtZero: true,
+              ticks: {
+                callback: value => `${value} €`
+              }
             }
           }
         }
       });
     }
 
-    function prevMonth() {
-      currentMonth--;
-      if (currentMonth < 0) {
-        currentMonth = 11;
-        currentYear--;
-      }
-      updateTable();
-      updateMonthLabel();
-    }
-
-    function nextMonth() {
-      currentMonth++;
-      if (currentMonth > 11) {
-        currentMonth = 0;
-        currentYear++;
-      }
-      updateTable();
-      updateMonthLabel();
-    }
-
-    function updateMonthLabel() {
-      const date = new Date(currentYear, currentMonth);
-      monthLabel.textContent = date.toLocaleString('pt-PT', { month: 'long', year: 'numeric' });
-      document.getElementById('monthTitle').textContent = `Registos de ${monthLabel.textContent}`;
-    }
-
-    window.onload = () => {
-      updateMonthLabel();
-      updateTable();
-      updateChart();
-    };
+    updateTable();
+    updateChart();
   </script>
 </body>
 </html>
